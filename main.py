@@ -18,22 +18,33 @@ st.sidebar.header("⚙️ 篩選大師設定")
 
 # 獲取全台股票清單的函數
 @st.cache_data(ttl=86400) # 緩存 24 小時，避免重複抓取
+import urllib3 # 新增這個引用
+
+# 忽略不安全連線的警告 (讓畫面保持乾淨)
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+
+@st.cache_data(ttl=86400)
 def get_tw_stock_list():
     """
-    從證交所與櫃買中心抓取所有股票代號
+    從證交所與櫃買中心抓取所有股票代號 (已修復 SSL 錯誤)
     """
     try:
-        # 上市股票 (Mode=2)
+        # 偽裝成瀏覽器請求，避免被擋
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+        }
+
+        # 上市股票 (Mode=2) - 加入 verify=False
         url_twse = "https://isin.twse.com.tw/isin/C_public.jsp?strMode=2"
-        res_twse = requests.get(url_twse)
+        res_twse = requests.get(url_twse, verify=False, headers=headers)
         df_twse = pd.read_html(res_twse.text)[0]
         
-        # 上櫃股票 (Mode=4)
+        # 上櫃股票 (Mode=4) - 加入 verify=False
         url_tpex = "https://isin.twse.com.tw/isin/C_public.jsp?strMode=4"
-        res_tpex = requests.get(url_tpex)
+        res_tpex = requests.get(url_tpex, verify=False, headers=headers)
         df_tpex = pd.read_html(res_tpex.text)[0]
         
-        # 整理數據
+        # 整理數據 (維持原本邏輯)
         def clean_data(df, suffix):
             df = df.iloc[2:] # 去掉標頭
             df.columns = df.iloc[0] # 設定欄位
